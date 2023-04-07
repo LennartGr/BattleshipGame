@@ -117,11 +117,32 @@ public class ShipStorage {
         }
     }
 
+    @Override
+    public String toString() {
+        String text = " |";
+        String secondLine = "--";
+        for (int i = 0; i < width; i++) {
+            char current = (char) (65 + i);
+            text += String.valueOf(current) + " ";
+            secondLine += "--";
+        }
+        text += "\n" + secondLine + "\n";
+        // print row by row
+        for (int y = 0; y < height; y++) {
+            String newline = String.valueOf(y) + "|";
+            for (int x = 0; x < width; x++) {
+                newline += this.shipsArray[x][y].symbol + " ";
+            }
+            text += newline + "\n";
+        }
+        return text;
+    }
+
     class StorageEntry {
 
         // null if no ship is present
         private Integer shipId;
-        private String symbol;
+        private String symbol = " ";
         private HitStatus hitStatus = HitStatus.NOT_ATTTACKED;
 
     }
