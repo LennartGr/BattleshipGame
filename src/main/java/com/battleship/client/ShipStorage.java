@@ -1,34 +1,53 @@
 package com.battleship.client;
 
+import java.util.Map;
+import java.util.HashMap;
+
 public class ShipStorage {
 
     private static final String ERR_OVERLAP = "Cannot place ship there, it is overlapping with an existant one";
     private static final String ERR_BOARD_END = "Cannot place ship there, board is too small";
-    
+    private static final String ERR_ATTACK_END = "Cannot attack here, board is too small";
+    private static final String ERR_ALREADY_ATTACKED = "You already attacked this spot!";
+
+    public static enum HitStatus {
+        NOT_ATTTACKED,
+        MISSED,
+        HIT,
+        DESTROYED
+    }
+
     private int height;
     private int width;
-    private int[][] shipsArray;
+    private StorageEntry[][] shipsArray;
+
+    // maps a ship id to the array of storage entries where the ship is placed on
+    Map<Integer, StorageEntry[]> shipToEntriesMap = new HashMap<>();
 
     public ShipStorage(int width, int height) {
         this.height = height;
         this.width = width;
-        this.shipsArray = new int[width][height];
+        this.shipsArray = new StorageEntry[width][height];
+        // init ships array
+        for (int x = 0; x < width; x++) {
+            for (int y = 0; y < height; y++) {
+                shipsArray[x][y] = new StorageEntry();
+            }
+        }
     }
 
-    public void addShip(Coordinates startCoordinates, boolean vertical, Ship ship) throws ShipPlacementException {
+    public void addShip(Coordinates startCoordinates, boolean vertical, Ship ship) throws BattleshipException {
         int x = startCoordinates.getX();
         int y = startCoordinates.getY();
         int shipRemainingLength = ship.getLength();
-        int[][] shipsCopy = copyArray(shipsArray);
-        
+        // first iteration: check if placement possible
         while (shipRemainingLength > 0) {
             if (x >= width || y >= height || x < 0 || y < 0) {
-                throw new ShipPlacementException(ERR_BOARD_END);
+                throw new BattleshipException(ERR_BOARD_END);
             }
-            if (shipsCopy[x][y] != 0) {
-                throw new ShipPlacementException(ERR_OVERLAP);
+            if (shipsArray[x][y].shipId != null) {
+                throw new BattleshipException(ERR_OVERLAP);
             }
-            shipsCopy[x][y] = ship.getId();
             if (vertical) {
                 y++;
             } else {
@@ -36,23 +55,75 @@ public class ShipStorage {
             }
             shipRemainingLength--;
         }
-        this.shipsArray = shipsCopy;
-    }
+        // second iteration: place ship
+        // update shipToEntriesMap as well
+        StorageEntry[] usedEntries = new StorageEntry[ship.getLength()];
+        int currentEntryIndex = 0;
 
-    public int getValue(Coordinates coordinates) {
-        return shipsArray[coordinates.getX()][coordinates.getY()];
-    }
-
-    private static int[][] copyArray(int[][] arr) {
-        int rows = arr.length;
-        int cols = arr[0].length;
-        int[][] copy = new int[rows][cols];
-        for (int i = 0; i < rows; i++) {
-            for (int j = 0; j < cols; j++) {
-                copy[i][j] = arr[i][j];
+        x = startCoordinates.getX();
+        y = startCoordinates.getY();
+        shipRemainingLength = ship.getLength();
+        while (shipRemainingLength > 0) {
+            StorageEntry currentEntry = shipsArray[x][y];
+            currentEntry.shipId = ship.getId();
+            currentEntry.symbol = ship.getSymbol();
+            usedEntries[currentEntryIndex++] = currentEntry;
+            // prepare to look at next entry
+            if (vertical) {
+                y++;
+            } else {
+                x++;
             }
+            shipRemainingLength--;
         }
-        return copy;
+        shipToEntriesMap.put(Integer.valueOf(ship.getId()), usedEntries);
     }
-    
+
+    public Integer getValue(Coordinates coordinates) {
+        return shipsArray[coordinates.getX()][coordinates.getY()].shipId;
+    }
+
+    public HitStatus getHitStatus(Coordinates coordinates) {
+        return shipsArray[coordinates.getX()][coordinates.getY()].hitStatus;
+    }
+
+    // Assuming board is completely build up
+    public HitStatus attack(Coordinates coordinates) throws BattleshipException {
+        int x = coordinates.getX();
+        int y = coordinates.getY();
+        if (x >= width || y >= height || x < 0 || y < 0) {
+            throw new BattleshipException(ERR_ATTACK_END);
+        }
+        StorageEntry entry = shipsArray[x][y];
+        if (entry.hitStatus != HitStatus.NOT_ATTTACKED) {
+            throw new BattleshipException(ERR_ALREADY_ATTACKED);
+        }
+        if (entry.shipId == null) {
+            entry.hitStatus = HitStatus.MISSED;
+            return HitStatus.MISSED;
+        } else {
+            entry.hitStatus = HitStatus.HIT;
+            for (StorageEntry shipEntry : shipToEntriesMap.get(entry.shipId)) {
+                // check if the ship was destroyed
+                if (shipEntry.hitStatus != HitStatus.HIT) {
+                    return HitStatus.HIT;
+                }
+            }
+            // the ship was destroyed
+            for (StorageEntry shipEntry : shipToEntriesMap.get(entry.shipId)) {
+                shipEntry.hitStatus = HitStatus.DESTROYED;
+            }
+            return HitStatus.DESTROYED;
+        }
+    }
+
+    class StorageEntry {
+
+        // null if no ship is present
+        private Integer shipId;
+        private String symbol;
+        private HitStatus hitStatus = HitStatus.NOT_ATTTACKED;
+
+    }
+
 }

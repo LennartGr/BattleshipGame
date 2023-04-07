@@ -12,6 +12,12 @@ public class Coordinates {
         this.y = numberY;
     }
 
+    public Coordinates(int x, int y) {
+        this.x = x;
+        this.y = y;
+        this.textX = (char) (x + 65);
+    }
+
     public int getX() {
         return this.x;
     }
