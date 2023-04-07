@@ -2,8 +2,9 @@ package com.battleship.client;
 
 import java.util.Map;
 import java.util.HashMap;
+import java.io.Serializable;
 
-public class ShipStorage {
+public class ShipStorage implements Serializable {
 
     private static final String ERR_OVERLAP = "Cannot place ship there, it is overlapping with an existant one";
     private static final String ERR_BOARD_END = "Cannot place ship there, board is too small";
@@ -138,7 +139,7 @@ public class ShipStorage {
         return text;
     }
 
-    class StorageEntry {
+    class StorageEntry implements Serializable {
 
         // null if no ship is present
         private Integer shipId;
