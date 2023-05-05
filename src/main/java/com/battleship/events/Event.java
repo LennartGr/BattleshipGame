@@ -1,5 +1,7 @@
 package com.battleship.events;
 
-public class Event {
+import java.io.Serializable;
+
+public class Event implements Serializable {
     
 }

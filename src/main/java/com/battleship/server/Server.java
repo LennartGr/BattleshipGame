@@ -4,6 +4,7 @@ import java.io.*;
 import java.net.*;
 
 import com.battleship.client.ShipStorage;
+import com.battleship.events.StartMessageEvent;
 
 public class Server {
     private ServerSocket serverSocket;
@@ -46,18 +47,29 @@ public class Server {
             }
         }
 
+        public void sendObject(Object obj, int id) throws IOException {
+            outStreams[id].writeObject(obj);
+            outStreams[id].flush();
+        }
+    
+        public Object receiveObject(int id) throws IOException, ClassNotFoundException {
+            return inStreams[id].readObject();
+        }
+
         @Override
         public void run() {
             try {
                 // phase one: wait for ship storages of both players
                 ShipStorage[] shipStorages = new ShipStorage[2];
                 for (int i = 0; i < clientSockets.length; i++) {
-                    Object obj = inStreams[i].readObject();
+                    Object obj = receiveObject(i);
                     shipStorages[i] = (ShipStorage) obj;
                     System.out.println("got ship storage from player " + i);
                     System.out.println(shipStorages[i].toString() + "\n");
                 }
                 // phase two: inform players that game started and tell them who attacks first
+                sendObject(new StartMessageEvent(true), 0);
+                sendObject(new StartMessageEvent(false), 1);
 
                 // cleanup
                 for (int i = 0; i < clientSockets.length; i++) {
