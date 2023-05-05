@@ -31,12 +31,18 @@ public class Client {
         socket.close();
     }
 
-    public static void main(String[] args) throws IOException {
-        Client client = new Client();
-        client.connect("localhost", 8080);
+    public void run() throws IOException {
+        connect("localhost", 8080);
         ShipStorageBuilder storageBuilder = new ShipStorageBuilder();
         ShipStorage shipStorage = storageBuilder.buildShipStorage(10, 10);
-        client.sendObject(shipStorage);
+        sendObject(shipStorage);
+
+        close();
+    }
+
+    public static void main(String[] args) throws IOException {
+        Client client = new Client();
+        client.run();
     }
     
 }

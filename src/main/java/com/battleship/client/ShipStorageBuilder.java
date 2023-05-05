@@ -118,9 +118,9 @@ public class ShipStorageBuilder {
         int id = 1;
         shipArray = new Ship[] {
                 new Ship(id++, 5, "x"),
-                new Ship(id++, 4, "x"),
-                new Ship(id++, 3, "x"),
-                new Ship(id++, 2, "x"),
+                // new Ship(id++, 4, "x"),
+                // new Ship(id++, 3, "x"),
+                // new Ship(id++, 2, "x"),
         };
     }
 }
