@@ -118,6 +118,16 @@ public class ShipStorage implements Serializable {
         }
     }
 
+    // checks if all ships are destroyed
+    public boolean isCompletelyDestroyed() {
+        for (Integer ShipId : shipToEntriesMap.keySet()) {
+            if (shipToEntriesMap.get(ShipId)[0].hitStatus != HitStatus.DESTROYED) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     @Override
     public String toString() {
         String text = " |";
