@@ -1,6 +1,8 @@
 package com.battleship.client;
 
-public class Coordinates {
+import java.io.Serializable;
+
+public class Coordinates implements Serializable {
 
     private final char textX;
     private final int x;
@@ -38,5 +40,10 @@ public class Coordinates {
         } else {
             throw new IllegalArgumentException("Input character is not a letter.");
         }
+    }
+
+    @Override
+    public String toString() {
+        return String.valueOf(textX) + String.valueOf(y);
     }
 }

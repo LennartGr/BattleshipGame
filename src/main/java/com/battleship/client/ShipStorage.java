@@ -11,13 +11,6 @@ public class ShipStorage implements Serializable {
     private static final String ERR_ATTACK_END = "Cannot attack here, board is too small";
     private static final String ERR_ALREADY_ATTACKED = "You already attacked this spot!";
 
-    public static enum HitStatus {
-        NOT_ATTTACKED,
-        MISSED,
-        HIT,
-        DESTROYED
-    }
-
     private int height;
     private int width;
     private StorageEntry[][] shipsArray;

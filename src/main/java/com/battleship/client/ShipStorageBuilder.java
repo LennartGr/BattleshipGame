@@ -18,9 +18,8 @@ public class ShipStorageBuilder {
         prepareSmallGame();
     }
 
-    public ShipStorage buildShipStorage(int width, int height) {
+    public ShipStorage buildShipStorage(Scanner scanner, int width, int height) {
         ShipStorage shipStorage = new ShipStorage(width, height);
-        Scanner scanner = new Scanner(System.in);
         System.out.println(PLACEMENT_INFO);
         for (Ship ship : shipArray) {
             System.out.println(String.format(ASK_TO_PLACE, ship.getLength()));
@@ -43,7 +42,6 @@ public class ShipStorageBuilder {
                 }
             }
         }
-        scanner.close();
         return shipStorage;
     }
 

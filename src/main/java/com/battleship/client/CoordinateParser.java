@@ -1,5 +1,7 @@
 package com.battleship.client;
 
+import java.util.Scanner;
+
 import org.javatuples.Triplet;
 
 public class CoordinateParser {
@@ -68,4 +70,6 @@ public class CoordinateParser {
         }
         return new Coordinates(triplet.getValue0(), triplet.getValue1());
     }
+
+    
 }

@@ -3,7 +3,12 @@ package com.battleship.server;
 import java.io.*;
 import java.net.*;
 
+import com.battleship.client.BattleshipException;
+import com.battleship.client.Coordinates;
 import com.battleship.client.ShipStorage;
+import com.battleship.client.HitStatus;
+import com.battleship.events.AttackerFeedbackEvent;
+import com.battleship.events.DefenderFeedbackEvent;
 import com.battleship.events.StartMessageEvent;
 
 public class Server {
@@ -38,9 +43,10 @@ public class Server {
         private final Socket[] clientSockets;
         private ObjectOutputStream[] outStreams = new ObjectOutputStream[2];
         private ObjectInputStream[] inStreams = new ObjectInputStream[2];
+        private ShipStorage[] shipStorages = new ShipStorage[2];
 
         public MatchHandler(Socket socketA, Socket socketB) throws IOException {
-            clientSockets = new Socket[] {socketA, socketB};
+            clientSockets = new Socket[] { socketA, socketB };
             for (int i = 0; i < clientSockets.length; i++) {
                 outStreams[i] = new ObjectOutputStream(clientSockets[i].getOutputStream());
                 inStreams[i] = new ObjectInputStream(clientSockets[i].getInputStream());
@@ -51,7 +57,7 @@ public class Server {
             outStreams[id].writeObject(obj);
             outStreams[id].flush();
         }
-    
+
         public Object receiveObject(int id) throws IOException, ClassNotFoundException {
             return inStreams[id].readObject();
         }
@@ -60,7 +66,7 @@ public class Server {
         public void run() {
             try {
                 // phase one: wait for ship storages of both players
-                ShipStorage[] shipStorages = new ShipStorage[2];
+
                 for (int i = 0; i < clientSockets.length; i++) {
                     Object obj = receiveObject(i);
                     shipStorages[i] = (ShipStorage) obj;
@@ -71,6 +77,15 @@ public class Server {
                 sendObject(new StartMessageEvent(true), 0);
                 sendObject(new StartMessageEvent(false), 1);
 
+                // phase three: game, players attack each other and receive feedback
+                int attackingPlayer = 0;
+
+                // TODO change condition
+                for (int i = 0; i < 2; i++) {
+                    handleAttack(attackingPlayer);
+                    attackingPlayer = (attackingPlayer + 1) % 2;
+                }
+
                 // cleanup
                 for (int i = 0; i < clientSockets.length; i++) {
                     inStreams[i].close();
@@ -80,6 +95,28 @@ public class Server {
             } catch (IOException | ClassNotFoundException e) {
                 e.printStackTrace();
             }
+        }
+
+        public void handleAttack(int attackingPlayer) throws IOException, ClassNotFoundException {
+            int defendingPlayer = (attackingPlayer + 1) % 2;
+            HitStatus hitStatus;
+            Coordinates attackCoordinates;
+            while (true) {
+                attackCoordinates = (Coordinates) receiveObject(attackingPlayer);
+                try {
+                    hitStatus = shipStorages[defendingPlayer].attack(attackCoordinates);
+                    // no exception thrown: attack was semantically correct
+                    break;
+                } catch (BattleshipException e) {
+                    AttackerFeedbackEvent event = new AttackerFeedbackEvent(false, null, e);
+                    sendObject(event, attackingPlayer);
+                }
+            }
+            // inform both players about attack
+            AttackerFeedbackEvent attackerEvent = new AttackerFeedbackEvent(true, hitStatus, null);
+            sendObject(attackerEvent, attackingPlayer);
+            DefenderFeedbackEvent defenderEvent = new DefenderFeedbackEvent(attackCoordinates, hitStatus);
+            sendObject(defenderEvent, defendingPlayer);
         }
     }
 

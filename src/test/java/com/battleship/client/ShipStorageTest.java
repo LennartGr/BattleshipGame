@@ -86,7 +86,7 @@ public class ShipStorageTest {
         storage.addShip(startCoordinates, vertical, ship);
 
         Coordinates attackCoordinates = new Coordinates(3, 3);
-        assertEquals(ShipStorage.HitStatus.MISSED, storage.attack(attackCoordinates));
+        assertEquals(HitStatus.MISSED, storage.attack(attackCoordinates));
     }
 
     @Test
@@ -98,7 +98,7 @@ public class ShipStorageTest {
 
         Coordinates attackCoordinates = new Coordinates(0, 1);
         assertFalse(storage.isCompletelyDestroyed());
-        assertEquals(ShipStorage.HitStatus.HIT, storage.attack(attackCoordinates));
+        assertEquals(HitStatus.HIT, storage.attack(attackCoordinates));
     }
 
     @Test
@@ -111,18 +111,18 @@ public class ShipStorageTest {
         // Attack the first coordinate of the ship
         Coordinates hitCoordinates = new Coordinates(0, 0);
         assertFalse(storage.isCompletelyDestroyed());
-        ShipStorage.HitStatus hitStatus = storage.attack(hitCoordinates);
-        assertEquals(ShipStorage.HitStatus.HIT, hitStatus);
+        HitStatus hitStatus = storage.attack(hitCoordinates);
+        assertEquals(HitStatus.HIT, hitStatus);
         // ship not destroyed yet
         assertFalse(storage.isCompletelyDestroyed());
         // Attack the second coordinate of the ship
         hitCoordinates = new Coordinates(0, 1);
         hitStatus = storage.attack(hitCoordinates);
-        assertEquals(ShipStorage.HitStatus.DESTROYED, hitStatus);
+        assertEquals(HitStatus.DESTROYED, hitStatus);
 
         // Check that both coordinates of the ship are marked as destroyed
-        assertEquals(ShipStorage.HitStatus.DESTROYED, storage.getHitStatus(new Coordinates(0, 0)));
-        assertEquals(ShipStorage.HitStatus.DESTROYED, storage.getHitStatus(hitCoordinates));
+        assertEquals(HitStatus.DESTROYED, storage.getHitStatus(new Coordinates(0, 0)));
+        assertEquals(HitStatus.DESTROYED, storage.getHitStatus(hitCoordinates));
 
         // only ship entirely destroyed: over
         assertTrue(storage.isCompletelyDestroyed());
