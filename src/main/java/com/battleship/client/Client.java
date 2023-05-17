@@ -6,6 +6,7 @@ import java.util.Scanner;
 import com.battleship.events.AttackerFeedbackEvent;
 import com.battleship.events.DefenderFeedbackEvent;
 import com.battleship.events.RoundStartEvent;
+import com.battleship.events.RoundStartEvent.AttackStatus;
 import com.battleship.events.RoundStartEvent.GameStatus;
 
 // use colorful console output
@@ -81,7 +82,9 @@ public class Client {
                 break;
             }
             // arriving here: game not over
-            final boolean attacking = roundStartEvent.attacking();
+            // check if the we are attacking (or even attacking again)
+            final boolean attacking = (roundStartEvent.attackStatus() == AttackStatus.ATTACK
+                    || roundStartEvent.attackStatus() == AttackStatus.ATTACK_AGAIN);
             System.out.println(roundStartEvent.toString());
 
             if (attacking) {

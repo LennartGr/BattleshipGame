@@ -10,6 +10,7 @@ import com.battleship.client.HitStatus;
 import com.battleship.events.AttackerFeedbackEvent;
 import com.battleship.events.DefenderFeedbackEvent;
 import com.battleship.events.RoundStartEvent;
+import com.battleship.events.RoundStartEvent.AttackStatus;
 import com.battleship.events.RoundStartEvent.GameStatus;
 
 public class Server {
@@ -77,15 +78,27 @@ public class Server {
 
                 // phase two: game, players attack each other and receive feedback
                 int attackingPlayer = 0;
+                // remembers whether the attacking player is attacking or even attacking again because the last attack was successful
+                AttackStatus currentAttackStatus = AttackStatus.ATTACK;
+                AttackStatus currentDefendStatus = AttackStatus.DEFEND;
                 while (true) {
                     if (isGameOver()) {
                         break;
                     }
                     // inform players who is attacking
-                    sendObject(new RoundStartEvent(GameStatus.GAME_ON, true), attackingPlayer);
-                    sendObject(new RoundStartEvent(GameStatus.GAME_ON, false), otherPlayer(attackingPlayer));
+                    sendObject(new RoundStartEvent(GameStatus.GAME_ON, currentAttackStatus), attackingPlayer);
+                    sendObject(new RoundStartEvent(GameStatus.GAME_ON, currentDefendStatus), otherPlayer(attackingPlayer));
 
-                    attackingPlayer = handleAttack(attackingPlayer);
+                    boolean mayAttackAgain = handleAttack(attackingPlayer);
+                    // update variables to inform players precisely in next round whether they are defending or attacking (again)
+                    if (mayAttackAgain) {
+                        currentAttackStatus = AttackStatus.ATTACK_AGAIN;
+                        currentDefendStatus = AttackStatus.DEFEND_AGAIN;
+                    } else {
+                        attackingPlayer = otherPlayer(attackingPlayer);
+                        currentAttackStatus = AttackStatus.ATTACK;
+                        currentDefendStatus = AttackStatus.DEFEND;
+                    }
                 }
 
                 // cleanup
@@ -111,8 +124,8 @@ public class Server {
                 if (shipStorages[i].isCompletelyDestroyed()) {
                     int looser = i;
                     int winner = otherPlayer(i);
-                    sendObject(new RoundStartEvent(GameStatus.YOU_WON, false), winner);
-                    sendObject(new RoundStartEvent(GameStatus.YOU_LOST, false), looser);
+                    sendObject(new RoundStartEvent(GameStatus.YOU_WON, null), winner);
+                    sendObject(new RoundStartEvent(GameStatus.YOU_LOST, null), looser);
                     return true;
                 }
             }
@@ -123,9 +136,9 @@ public class Server {
          * handles attack of player with id attackingPlayer
          * 
          * @param attackingPlayer id of the player that attacks
-         * @returns id of the player that attacks afterwards
+         * @returns true iff the player may attack again
          */
-        private int handleAttack(int attackingPlayer) throws IOException, ClassNotFoundException {
+        private boolean handleAttack(int attackingPlayer) throws IOException, ClassNotFoundException {
             int defendingPlayer = otherPlayer(attackingPlayer);
             HitStatus hitStatus;
             Coordinates attackCoordinates;
@@ -147,11 +160,7 @@ public class Server {
             sendObject(defenderEvent, defendingPlayer);
 
             // use hitStatus to find out who attacks afterwards
-            if (hitStatus == HitStatus.HIT || hitStatus == HitStatus.DESTROYED) {
-                return attackingPlayer;
-            } else {
-                return defendingPlayer;
-            }
+            return (hitStatus == HitStatus.HIT || hitStatus == HitStatus.DESTROYED);
         }
 
         /*
