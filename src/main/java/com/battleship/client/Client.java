@@ -8,6 +8,11 @@ import com.battleship.events.DefenderFeedbackEvent;
 import com.battleship.events.RoundStartEvent;
 import com.battleship.events.RoundStartEvent.GameStatus;
 
+// use colorful console output
+import org.fusesource.jansi.AnsiConsole;
+import static org.fusesource.jansi.Ansi.*;
+
+
 import java.io.*;
 
 public class Client {
@@ -136,7 +141,7 @@ public class Client {
             System.out.println(INPUT_DEMAND_ATTACK);
             String input = scanner.next();
             if (input.equals(COMMAND_SHOW_OWN)) {
-                System.out.println(shipStorage.toString());
+                System.out.println(ansi().eraseScreen().render(shipStorage.toString()));
             } else {
                 return input;
             }
@@ -144,6 +149,9 @@ public class Client {
     }
 
     public static void main(String[] args) throws IOException, ClassNotFoundException {
+        // allow for colorful console output
+        AnsiConsole.systemInstall();
+
         Client client = new Client();
         client.run();
     }

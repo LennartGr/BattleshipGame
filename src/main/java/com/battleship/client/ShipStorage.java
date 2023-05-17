@@ -4,6 +4,10 @@ import java.util.Map;
 import java.util.HashMap;
 import java.io.Serializable;
 
+// colorful console output
+import static org.fusesource.jansi.Ansi.*;
+import static org.fusesource.jansi.Ansi.Color.*;
+
 public class ShipStorage implements Serializable {
 
     private static final String ERR_OVERLAP = "Cannot place ship there, it is overlapping with an existant one";
@@ -123,23 +127,7 @@ public class ShipStorage implements Serializable {
 
     @Override
     public String toString() {
-        String text = " |";
-        String secondLine = "--";
-        for (int i = 0; i < width; i++) {
-            char current = (char) (65 + i);
-            text += String.valueOf(current) + " ";
-            secondLine += "--";
-        }
-        text += "\n" + secondLine + "\n";
-        // print row by row
-        for (int y = 0; y < height; y++) {
-            String newline = String.valueOf(y) + "|";
-            for (int x = 0; x < width; x++) {
-                newline += this.shipsArray[x][y].symbol + " ";
-            }
-            text += newline + "\n";
-        }
-        return text;
+        return new ShipStorageVisualizer().shipStorageToString();
     }
 
     class StorageEntry implements Serializable {
@@ -149,6 +137,30 @@ public class ShipStorage implements Serializable {
         private String symbol = " ";
         private HitStatus hitStatus = HitStatus.NOT_ATTTACKED;
 
+    }
+
+    class ShipStorageVisualizer {
+
+        public String shipStorageToString() {
+            String text = " |";
+            String secondLine = "--";
+            for (int i = 0; i < width; i++) {
+                char current = (char) (65 + i);
+                text += String.valueOf(current) + " ";
+                secondLine += "--";
+            }
+            text += "\n" + secondLine + "\n";
+            // print row by row
+            for (int y = 0; y < height; y++) {
+                String newline = String.valueOf(y) + "|";
+                for (int x = 0; x < width; x++) {
+                    String symbol = "@|red " + shipsArray[x][y].symbol + "|@";
+                    newline +=  symbol +  " ";
+                }
+                text += newline + "\n";
+            }
+            return text;
+        }
     }
 
 }
