@@ -1,5 +1,7 @@
 package com.battleship.events;
 
+// TODO delete, obsolete 
+
 public class StartMessageEvent extends Event {
     
     final boolean starting;

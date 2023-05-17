@@ -9,7 +9,9 @@ import com.battleship.client.ShipStorage;
 import com.battleship.client.HitStatus;
 import com.battleship.events.AttackerFeedbackEvent;
 import com.battleship.events.DefenderFeedbackEvent;
+import com.battleship.events.RoundStartEvent;
 import com.battleship.events.StartMessageEvent;
+import com.battleship.events.RoundStartEvent.GameStatus;
 
 public class Server {
     private ServerSocket serverSocket;
@@ -73,17 +75,18 @@ public class Server {
                     System.out.println("got ship storage from player " + i);
                     System.out.println(shipStorages[i].toString() + "\n");
                 }
-                // phase two: inform players that game started and tell them who attacks first
-                sendObject(new StartMessageEvent(true), 0);
-                sendObject(new StartMessageEvent(false), 1);
 
-                // phase three: game, players attack each other and receive feedback
+                // phase two: game, players attack each other and receive feedback
                 int attackingPlayer = 0;
+                while (true) {
+                    if (isGameOver()) {
+                        break;
+                    }
+                    // inform players who is attacking
+                    sendObject(new RoundStartEvent(GameStatus.GAME_ON, true), attackingPlayer);
+                    sendObject(new RoundStartEvent(GameStatus.GAME_ON, false), otherPlayer(attackingPlayer));
 
-                // TODO change condition
-                for (int i = 0; i < 2; i++) {
-                    handleAttack(attackingPlayer);
-                    attackingPlayer = (attackingPlayer + 1) % 2;
+                    attackingPlayer = handleAttack(attackingPlayer);
                 }
 
                 // cleanup
@@ -97,8 +100,34 @@ public class Server {
             }
         }
 
-        public void handleAttack(int attackingPlayer) throws IOException, ClassNotFoundException {
-            int defendingPlayer = (attackingPlayer + 1) % 2;
+        /*
+         * checks if game is over.
+         * if yes: players are informed via special RoundStartEvent
+         * 
+         * @return true iff game is over
+         */
+        private boolean isGameOver() throws IOException {
+            // invariant: only one player may win at once (never a tie)
+            for (int i = 0; i < 2; i++) {
+                if (shipStorages[i].isCompletelyDestroyed()) {
+                    int looser = i;
+                    int winner = otherPlayer(i);
+                    sendObject(new RoundStartEvent(GameStatus.YOU_WON, false), winner);
+                    sendObject(new RoundStartEvent(GameStatus.YOU_LOST, false), looser);
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /*
+         * handles attack of player with id attackingPlayer
+         * 
+         * @param attackingPlayer id of the player that attacks
+         * @returns id of the player that attacks afterwards
+         */
+        private int handleAttack(int attackingPlayer) throws IOException, ClassNotFoundException {
+            int defendingPlayer = otherPlayer(attackingPlayer);
             HitStatus hitStatus;
             Coordinates attackCoordinates;
             while (true) {
@@ -117,36 +146,25 @@ public class Server {
             sendObject(attackerEvent, attackingPlayer);
             DefenderFeedbackEvent defenderEvent = new DefenderFeedbackEvent(attackCoordinates, hitStatus);
             sendObject(defenderEvent, defendingPlayer);
-        }
-    }
 
-    // deprecated
-    private static class ConnectionHandler implements Runnable {
-        private final Socket clientSocket;
-        private final ObjectOutputStream out;
-        private final ObjectInputStream in;
-
-        public ConnectionHandler(Socket socket) throws IOException {
-            clientSocket = socket;
-            out = new ObjectOutputStream(clientSocket.getOutputStream());
-            in = new ObjectInputStream(clientSocket.getInputStream());
-        }
-
-        @Override
-        public void run() {
-            try {
-                Object obj = in.readObject();
-                // check what type of event it is and fetch parameters
-                ShipStorage clientStorage = (ShipStorage) obj;
-                System.out.println(clientStorage.toString());
-
-                // Clean up resources
-                in.close();
-                out.close();
-                clientSocket.close();
-            } catch (IOException | ClassNotFoundException e) {
-                e.printStackTrace();
+            // use hitStatus to find out who attacks afterwards
+            if (hitStatus == HitStatus.HIT || hitStatus == HitStatus.DESTROYED) {
+                return attackingPlayer;
+            } else {
+                return defendingPlayer;
             }
         }
+
+        /*
+         * Returns id of the other player
+         * 
+         * @param player id of the player
+         * @return id of the other player
+         */
+        private int otherPlayer(int player) {
+            return (player + 1) % 2;
+        }
+
+        
     }
 }
