@@ -4,10 +4,6 @@ import java.util.Map;
 import java.util.HashMap;
 import java.io.Serializable;
 
-// colorful console output
-import static org.fusesource.jansi.Ansi.*;
-import static org.fusesource.jansi.Ansi.Color.*;
-
 public class ShipStorage implements Serializable {
 
     private static final String ERR_OVERLAP = "Cannot place ship there, it is overlapping with an existant one";
@@ -127,41 +123,75 @@ public class ShipStorage implements Serializable {
 
     @Override
     public String toString() {
-        return new ShipStorageVisualizer().shipStorageToString();
+        return storageEntryArrayVisualizer(this.shipsArray);
     }
 
+    /*
+     * A 2d array that keeps track of the taken attacks and uses StorageEntries 
+     * to do so.
+     */
+    class AttackHistory {
+
+        private StorageEntry[][] attackHistory;
+
+        public AttackHistory() {
+            this.attackHistory = new StorageEntry[width][height];
+            // init ships array
+            for (int x = 0; x < width; x++) {
+                for (int y = 0; y < height; y++) {
+                    attackHistory[x][y] = new StorageEntry();
+                }
+            }
+        }
+
+        public void setHitStatus(Coordinates coordinates, HitStatus hitStatus) {
+            attackHistory[coordinates.getX()][coordinates.getY()].hitStatus = hitStatus;
+        }
+
+        @Override
+        public String toString() {
+            return storageEntryArrayVisualizer(attackHistory);
+        }
+    }
+
+    /*
+     * Light data container 
+     */
     class StorageEntry implements Serializable {
 
         // null if no ship is present
         private Integer shipId;
         private String symbol = " ";
         private HitStatus hitStatus = HitStatus.NOT_ATTTACKED;
-
     }
 
-    class ShipStorageVisualizer {
-
-        public String shipStorageToString() {
-            String text = " |";
-            String secondLine = "--";
-            for (int i = 0; i < width; i++) {
-                char current = (char) (65 + i);
-                text += String.valueOf(current) + " ";
-                secondLine += "--";
-            }
-            text += "\n" + secondLine + "\n";
-            // print row by row
-            for (int y = 0; y < height; y++) {
-                String newline = String.valueOf(y) + "|";
-                for (int x = 0; x < width; x++) {
-                    String backgroundColor = HitStatusColorizer.getColorString(shipsArray[x][y].hitStatus);
-                    String symbol = String.format("@|%s %s|@", backgroundColor, shipsArray[x][y].symbol);
-                    newline +=  symbol +  " ";
-                }
-                text += newline + "\n";
-            }
-            return text;
+    /*
+     * Convert a 2d array of storage entries to a String that can be displayed
+     * with the jansi library
+     */
+    private static String storageEntryArrayVisualizer(StorageEntry[][] storageEntries) {
+        final int width = storageEntries.length;
+        final int height = storageEntries[0].length;
+        String text = " |";
+        String secondLine = "--";
+        for (int i = 0; i < width; i++) {
+            char current = (char) (65 + i);
+            text += String.valueOf(current) + " ";
+            secondLine += "--";
         }
+        text += "\n" + secondLine + "\n";
+        // print row by row
+        for (int y = 0; y < height; y++) {
+            String newline = String.valueOf(y) + "|";
+            for (int x = 0; x < width; x++) {
+                String backgroundColor = HitStatusColorizer.getColorString(storageEntries[x][y].hitStatus);
+                String symbol = String.format("@|%s %s|@", backgroundColor, storageEntries[x][y].symbol);
+                newline += symbol + " ";
+            }
+            text += newline + "\n";
+        }
+        // add explication in green
+        text += String.format("@|%s %s|@\n", "green", HitStatusColorizer.EXPLICATION);
+        return text;
     }
-
 }
