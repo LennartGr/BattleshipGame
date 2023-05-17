@@ -141,7 +141,7 @@ public class Client {
             System.out.println(INPUT_DEMAND_ATTACK);
             String input = scanner.next();
             if (input.equals(COMMAND_SHOW_OWN)) {
-                System.out.println(ansi().eraseScreen().render(shipStorage.toString()));
+                System.out.println(ansi().render(shipStorage.toString()));
             } else {
                 return input;
             }

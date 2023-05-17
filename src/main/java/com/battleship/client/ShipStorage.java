@@ -154,7 +154,8 @@ public class ShipStorage implements Serializable {
             for (int y = 0; y < height; y++) {
                 String newline = String.valueOf(y) + "|";
                 for (int x = 0; x < width; x++) {
-                    String symbol = "@|red " + shipsArray[x][y].symbol + "|@";
+                    String backgroundColor = HitStatusColorizer.getColorString(shipsArray[x][y].hitStatus);
+                    String symbol = String.format("@|%s %s|@", backgroundColor, shipsArray[x][y].symbol);
                     newline +=  symbol +  " ";
                 }
                 text += newline + "\n";
