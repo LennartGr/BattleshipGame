@@ -10,7 +10,6 @@ import com.battleship.client.HitStatus;
 import com.battleship.events.AttackerFeedbackEvent;
 import com.battleship.events.DefenderFeedbackEvent;
 import com.battleship.events.RoundStartEvent;
-import com.battleship.events.StartMessageEvent;
 import com.battleship.events.RoundStartEvent.GameStatus;
 
 public class Server {

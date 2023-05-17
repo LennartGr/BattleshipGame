@@ -6,7 +6,6 @@ import java.util.Scanner;
 import com.battleship.events.AttackerFeedbackEvent;
 import com.battleship.events.DefenderFeedbackEvent;
 import com.battleship.events.RoundStartEvent;
-import com.battleship.events.StartMessageEvent;
 import com.battleship.events.RoundStartEvent.GameStatus;
 
 import java.io.*;
@@ -15,6 +14,12 @@ public class Client {
     private Socket socket;
     private ObjectOutputStream out;
     private ObjectInputStream in;
+
+    private ShipStorage shipStorage;
+
+    private static final String COMMAND_SHOW_OWN = "showown";
+    private static final String INPUT_DEMAND_ATTACK = "Enter coordinates where you want to attack. Use \'"
+            + COMMAND_SHOW_OWN + "\' to see the state of your ships.";
 
     // reused and closed at the very end
     private Scanner scanner = new Scanner(System.in);
@@ -48,7 +53,7 @@ public class Client {
         // first phase: send shipStorage to server
         connect("localhost", 8080);
         ShipStorageBuilder storageBuilder = new ShipStorageBuilder();
-        ShipStorage shipStorage = storageBuilder.buildShipStorage(scanner, 10, 10);
+        shipStorage = storageBuilder.buildShipStorage(scanner, 10, 10);
         sendObject(shipStorage);
 
         // second phase: wait for start message
@@ -74,13 +79,18 @@ public class Client {
                 performAttack();
             } else {
                 DefenderFeedbackEvent feedbackEvent = (DefenderFeedbackEvent) receiveObject();
-                System.out.println("Cell " + feedbackEvent.coordinates().toString() + " was attacked. Result: "
-                        + feedbackEvent.hitStatus().toString());
-                // TODO update own ship storage accordingly
+                System.out.printf("Cell %s was attacked. Result: %s.%n",
+                        feedbackEvent.coordinates().toString(),
+                        feedbackEvent.hitStatus().toString());
+                // update own ship storage accordingly
+                try {
+                    shipStorage.attack(feedbackEvent.coordinates());
+                } catch (BattleshipException e) {
+                    // invariant: exception never thrown since server ensured that attack was legal
+                }
             }
         }
 
-        // TODO put back
         close();
     }
 
@@ -94,11 +104,12 @@ public class Client {
                 System.out.println("Result of your attack: " + feedbackEvent.hitStatus().toString());
                 return;
             } else {
-                System.out.println(feedbackEvent.exception().toString());
+                System.out.println(feedbackEvent.exception().getMessage());
                 System.out.println("You may try to attack again!");
             }
         }
-        // TODO update some history of own attacks to reflect this attack (2d array with hit statuses)
+        // TODO update some history of own attacks to reflect this attack (2d array with
+        // hit statuses)
     }
 
     // fetches scanner input until it can be parsed to syntactically correct
@@ -106,9 +117,9 @@ public class Client {
     private Coordinates parseCoordinatesToScanner() {
         Coordinates coordinates;
         while (true) {
-            // TODO give player the option to view some information as well (own board or attack history)
-            System.out.println("Enter coordinates where you want to attack:");
-            String input = scanner.next();
+            // TODO give player the option to view some information as well (own board or
+            // attack history)
+            String input = catchSpecialInputs();
             try {
                 coordinates = CoordinateParser.parseCoordinates(input);
                 break;
@@ -117,6 +128,19 @@ public class Client {
             }
         }
         return coordinates;
+    }
+
+    // if input is a known command, execute it
+    private String catchSpecialInputs() {
+        while (true) {
+            System.out.println(INPUT_DEMAND_ATTACK);
+            String input = scanner.next();
+            if (input.equals(COMMAND_SHOW_OWN)) {
+                System.out.println(shipStorage.toString());
+            } else {
+                return input;
+            }
+        }
     }
 
     public static void main(String[] args) throws IOException, ClassNotFoundException {
