@@ -15,7 +15,7 @@ public class ShipStorageBuilder {
     private Ship[] shipArray;
 
     public ShipStorageBuilder() {
-        prepareSmallGame();
+        prepareNormalGame();
     }
 
     public ShipStorage buildShipStorage(Scanner scanner, int width, int height) {
