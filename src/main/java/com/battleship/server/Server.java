@@ -4,6 +4,7 @@ import java.io.*;
 import java.net.*;
 
 import com.battleship.client.BattleshipException;
+import com.battleship.client.ClientDisconnectException;
 import com.battleship.client.Coordinates;
 import com.battleship.client.ShipStorage;
 import com.battleship.client.HitStatus;
@@ -55,13 +56,21 @@ public class Server {
             }
         }
 
-        public void sendObject(Object obj, int id) throws IOException {
-            outStreams[id].writeObject(obj);
-            outStreams[id].flush();
+        public void sendObject(Object obj, int id) throws ClientDisconnectException {
+            try {
+                outStreams[id].writeObject(obj);
+                outStreams[id].flush();
+            } catch (IOException e) {
+                throw new ClientDisconnectException(id);
+            }
         }
 
-        public Object receiveObject(int id) throws IOException, ClassNotFoundException {
-            return inStreams[id].readObject();
+        public Object receiveObject(int id) throws ClientDisconnectException, ClassNotFoundException {
+            try {
+                return inStreams[id].readObject();
+            } catch (IOException e) {
+                throw new ClientDisconnectException(id);
+            }
         }
 
         @Override
@@ -72,13 +81,13 @@ public class Server {
                 for (int i = 0; i < clientSockets.length; i++) {
                     Object obj = receiveObject(i);
                     shipStorages[i] = (ShipStorage) obj;
-                    System.out.println("got ship storage from player " + i);
-                    System.out.println(shipStorages[i].toString() + "\n");
+                    System.out.println("received ship storage from player " + i);
                 }
 
                 // phase two: game, players attack each other and receive feedback
                 int attackingPlayer = 0;
-                // remembers whether the attacking player is attacking or even attacking again because the last attack was successful
+                // remembers whether the attacking player is attacking or even attacking again
+                // because the last attack was successful
                 AttackStatus currentAttackStatus = AttackStatus.ATTACK;
                 AttackStatus currentDefendStatus = AttackStatus.DEFEND;
                 while (true) {
@@ -87,10 +96,12 @@ public class Server {
                     }
                     // inform players who is attacking
                     sendObject(new RoundStartEvent(GameStatus.GAME_ON, currentAttackStatus), attackingPlayer);
-                    sendObject(new RoundStartEvent(GameStatus.GAME_ON, currentDefendStatus), otherPlayer(attackingPlayer));
+                    sendObject(new RoundStartEvent(GameStatus.GAME_ON, currentDefendStatus),
+                            otherPlayer(attackingPlayer));
 
                     boolean mayAttackAgain = handleAttack(attackingPlayer);
-                    // update variables to inform players precisely in next round whether they are defending or attacking (again)
+                    // update variables to inform players precisely in next round whether they are
+                    // defending or attacking (again)
                     if (mayAttackAgain) {
                         currentAttackStatus = AttackStatus.ATTACK_AGAIN;
                         currentDefendStatus = AttackStatus.DEFEND_AGAIN;
@@ -107,6 +118,15 @@ public class Server {
                     outStreams[i].close();
                     clientSockets[i].close();
                 }
+            } catch (ClientDisconnectException e) {
+                // inform other client that he won because of disconnect of the first client
+                int disconnectId = e.getDisconnectId();
+                System.out.println("Match ended unexpectedly because a player disconnected.");
+                try {
+                    sendObject(e, otherPlayer(disconnectId));
+                } catch (ClientDisconnectException e2) {
+                    // both clients disconnected, don't do anynight
+                }
             } catch (IOException | ClassNotFoundException e) {
                 e.printStackTrace();
             }
@@ -118,7 +138,7 @@ public class Server {
          * 
          * @return true iff game is over
          */
-        private boolean isGameOver() throws IOException {
+        private boolean isGameOver() throws ClientDisconnectException {
             // invariant: only one player may win at once (never a tie)
             for (int i = 0; i < 2; i++) {
                 if (shipStorages[i].isCompletelyDestroyed()) {
@@ -136,9 +156,10 @@ public class Server {
          * handles attack of player with id attackingPlayer
          * 
          * @param attackingPlayer id of the player that attacks
+         * 
          * @returns true iff the player may attack again
          */
-        private boolean handleAttack(int attackingPlayer) throws IOException, ClassNotFoundException {
+        private boolean handleAttack(int attackingPlayer) throws ClientDisconnectException, ClassNotFoundException {
             int defendingPlayer = otherPlayer(attackingPlayer);
             HitStatus hitStatus;
             Coordinates attackCoordinates;
@@ -167,12 +188,12 @@ public class Server {
          * Returns id of the other player
          * 
          * @param player id of the player
+         * 
          * @return id of the other player
          */
         private int otherPlayer(int player) {
             return (player + 1) % 2;
         }
 
-        
     }
 }

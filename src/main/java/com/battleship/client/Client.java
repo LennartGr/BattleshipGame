@@ -46,8 +46,13 @@ public class Client {
         out.flush();
     }
 
-    public Object receiveObject() throws IOException, ClassNotFoundException {
-        return in.readObject();
+    public Object receiveObject() throws ClientDisconnectException, IOException, ClassNotFoundException {
+        Object obj = in.readObject();
+        // check if the special case occured of opponent disconnecting
+        if (obj instanceof ClientDisconnectException) {
+            throw (ClientDisconnectException) obj;
+        }
+        return obj;
     }
 
     public void close() throws IOException {
@@ -57,56 +62,61 @@ public class Client {
         scanner.close();
     }
 
-    public void run() throws IOException, ClassNotFoundException {
-        // first phase: send shipStorage to server
-        connect("localhost", 8080);
-        ShipStorageBuilder storageBuilder = new ShipStorageBuilder();
-        shipStorage = storageBuilder.buildShipStorage(scanner, 10, 10);
-        sendObject(shipStorage);
+    public void run() throws ClassNotFoundException {
+        try {
+            // first phase: send shipStorage to server
+            connect("localhost", 8080);
+            ShipStorageBuilder storageBuilder = new ShipStorageBuilder();
+            shipStorage = storageBuilder.buildShipStorage(scanner, 10, 10);
+            sendObject(shipStorage);
 
-        attackHistory = shipStorage.new AttackHistory();
+            attackHistory = shipStorage.new AttackHistory();
 
-        // second phase: wait for start message
-        // StartMessageEvent startMessage = (StartMessageEvent) receiveObject();
-        // System.out.println(startMessage.toString());
+            // second phase: wait for start message
+            // StartMessageEvent startMessage = (StartMessageEvent) receiveObject();
+            // System.out.println(startMessage.toString());
 
-        // boolean attacking = startMessage.getStarting();
+            // boolean attacking = startMessage.getStarting();
 
-        while (true) {
-            final RoundStartEvent roundStartEvent = (RoundStartEvent) receiveObject();
-            if (roundStartEvent.gameStatus() == GameStatus.YOU_LOST) {
-                System.out.println("You lost!");
-                break;
-            } else if (roundStartEvent.gameStatus() == GameStatus.YOU_WON) {
-                System.out.println("You won!");
-                break;
-            }
-            // arriving here: game not over
-            // check if the we are attacking (or even attacking again)
-            final boolean attacking = (roundStartEvent.attackStatus() == AttackStatus.ATTACK
-                    || roundStartEvent.attackStatus() == AttackStatus.ATTACK_AGAIN);
-            System.out.println(roundStartEvent.toString());
+            while (true) {
+                final RoundStartEvent roundStartEvent = (RoundStartEvent) receiveObject();
+                if (roundStartEvent.gameStatus() == GameStatus.YOU_LOST) {
+                    System.out.println("You lost!");
+                    break;
+                } else if (roundStartEvent.gameStatus() == GameStatus.YOU_WON) {
+                    System.out.println("You won!");
+                    break;
+                }
+                // arriving here: game not over
+                // check if the we are attacking (or even attacking again)
+                final boolean attacking = (roundStartEvent.attackStatus() == AttackStatus.ATTACK
+                        || roundStartEvent.attackStatus() == AttackStatus.ATTACK_AGAIN);
+                System.out.println(roundStartEvent.toString());
 
-            if (attacking) {
-                performAttack();
-            } else {
-                DefenderFeedbackEvent feedbackEvent = (DefenderFeedbackEvent) receiveObject();
-                System.out.printf("Cell %s was attacked. Result: %s.%n",
-                        feedbackEvent.coordinates().toString(),
-                        feedbackEvent.hitStatus().toString());
-                // update own ship storage accordingly
-                try {
-                    shipStorage.attack(feedbackEvent.coordinates());
-                } catch (BattleshipException e) {
-                    // invariant: exception never thrown since server ensured that attack was legal
+                if (attacking) {
+                    performAttack();
+                } else {
+                    DefenderFeedbackEvent feedbackEvent = (DefenderFeedbackEvent) receiveObject();
+                    System.out.printf("Cell %s was attacked. Result: %s.%n",
+                            feedbackEvent.coordinates().toString(),
+                            feedbackEvent.hitStatus().toString());
+                    // update own ship storage accordingly
+                    try {
+                        shipStorage.attack(feedbackEvent.coordinates());
+                    } catch (BattleshipException e) {
+                        // invariant: exception never thrown since server ensured that attack was legal
+                    }
                 }
             }
+            close();
+        } catch (ClientDisconnectException e) {
+            System.out.println("The other player disconnected, you won.");
+        } catch (IOException e) {
+            System.out.println("Communication with server failed, game terminated.");
         }
-
-        close();
     }
 
-    private void performAttack() throws IOException, ClassNotFoundException {
+    private void performAttack() throws ClientDisconnectException, IOException, ClassNotFoundException {
         // syntax check of input on client side:
         while (true) {
             Coordinates coordinates = parseCoordinatesToScanner();
