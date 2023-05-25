@@ -231,9 +231,12 @@ public class ShipStorage implements Serializable {
         private HitStatus hitStatus = HitStatus.NOT_ATTTACKED;
     }
 
-    /*
-     * Convert a 2d array of storage entries to a String that can be displayed
-     * with the jansi library
+    /**
+     * Converts a 2D array of storage entries to a string representation that can be
+     * displayed.
+     *
+     * @param storageEntries The 2D array of storage entries.
+     * @return The string representation of the storage entries.
      */
     private static String storageEntryArrayVisualizer(StorageEntry[][] storageEntries) {
         final int width = storageEntries.length;

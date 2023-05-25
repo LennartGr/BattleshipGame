@@ -14,9 +14,18 @@ import com.battleship.events.RoundStartEvent;
 import com.battleship.events.RoundStartEvent.AttackStatus;
 import com.battleship.events.RoundStartEvent.GameStatus;
 
+/**
+ * Server class that handles the game logic for a Battleship game.
+ */
 public class Server {
     private ServerSocket serverSocket;
 
+    /**
+     * Starts the server on the specified port.
+     *
+     * @param port the port to start the server on
+     * @throws IOException if an I/O error occurs when opening the server socket
+     */
     public void start(int port) throws IOException {
         serverSocket = new ServerSocket(port);
         System.out.println("Server started on port " + port);
@@ -37,17 +46,33 @@ public class Server {
         }
     }
 
+    /**
+     * The main method to start the server.
+     *
+     * @param args the command-line arguments
+     * @throws IOException if an I/O error occurs when starting the server
+     */
     public static void main(String[] args) throws IOException {
         Server server = new Server();
         server.start(8080);
     }
 
+    /**
+     * Runnable class that handles a match between two clients.
+     */
     private static class MatchHandler implements Runnable {
         private final Socket[] clientSockets;
         private ObjectOutputStream[] outStreams = new ObjectOutputStream[2];
         private ObjectInputStream[] inStreams = new ObjectInputStream[2];
         private ShipStorage[] shipStorages = new ShipStorage[2];
 
+        /**
+         * Constructs a MatchHandler with the given client sockets.
+         *
+         * @param socketA the socket for client A
+         * @param socketB the socket for client B
+         * @throws IOException if an I/O error occurs when creating the object streams
+         */
         public MatchHandler(Socket socketA, Socket socketB) throws IOException {
             clientSockets = new Socket[] { socketA, socketB };
             for (int i = 0; i < clientSockets.length; i++) {
@@ -56,6 +81,13 @@ public class Server {
             }
         }
 
+        /**
+         * Sends an object to the specified client.
+         *
+         * @param obj the object to send
+         * @param id  the ID of the client
+         * @throws ClientDisconnectException if the client has disconnected
+         */
         public void sendObject(Object obj, int id) throws ClientDisconnectException {
             try {
                 outStreams[id].writeObject(obj);
@@ -65,6 +97,14 @@ public class Server {
             }
         }
 
+        /**
+         * Receives an object from the specified client.
+         *
+         * @param id the ID of the client
+         * @return the received object
+         * @throws ClientDisconnectException if the client has disconnected
+         * @throws ClassNotFoundException    if error in protocol occured
+         */
         public Object receiveObject(int id) throws ClientDisconnectException, ClassNotFoundException {
             try {
                 return inStreams[id].readObject();
@@ -73,6 +113,9 @@ public class Server {
             }
         }
 
+        /**
+         * Runs the match handling logic.
+         */
         @Override
         public void run() {
             try {
@@ -132,11 +175,11 @@ public class Server {
             }
         }
 
-        /*
-         * checks if game is over.
-         * if yes: players are informed via special RoundStartEvent
-         * 
-         * @return true iff game is over
+        /**
+         * Checks if the game is over.
+         *
+         * @return true if the game is over, false otherwise
+         * @throws ClientDisconnectException if a client has disconnected
          */
         private boolean isGameOver() throws ClientDisconnectException {
             // invariant: only one player may win at once (never a tie)
@@ -152,12 +195,14 @@ public class Server {
             return false;
         }
 
-        /*
-         * handles attack of player with id attackingPlayer
-         * 
-         * @param attackingPlayer id of the player that attacks
-         * 
-         * @returns true iff the player may attack again
+        /**
+         * Handles the attack of the attacking player.
+         *
+         * @param attackingPlayer the ID of the attacking player
+         * @return true if the attacking player may attack again, false otherwise
+         * @throws ClientDisconnectException if a client has disconnected
+         * @throws ClassNotFoundException    if the class of the received object cannot
+         *                                   be found
          */
         private boolean handleAttack(int attackingPlayer) throws ClientDisconnectException, ClassNotFoundException {
             int defendingPlayer = otherPlayer(attackingPlayer);
@@ -184,12 +229,11 @@ public class Server {
             return (hitStatus == HitStatus.HIT || hitStatus == HitStatus.DESTROYED);
         }
 
-        /*
-         * Returns id of the other player
-         * 
-         * @param player id of the player
-         * 
-         * @return id of the other player
+        /**
+         * Returns the ID of the other player.
+         *
+         * @param player the ID of the player
+         * @return the ID of the other player
          */
         private int otherPlayer(int player) {
             return (player + 1) % 2;
