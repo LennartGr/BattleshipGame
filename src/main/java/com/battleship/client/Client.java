@@ -41,6 +41,7 @@ public class Client {
     private void connect(String hostName, int port) throws IOException {
         socket = new Socket(hostName, port);
         JansiHelper.print("Connected to server at " + socket.getRemoteSocketAddress());
+        JansiHelper.print("Waiting for another player to join the lobby...");
 
         out = new ObjectOutputStream(socket.getOutputStream());
         in = new ObjectInputStream(socket.getInputStream());
