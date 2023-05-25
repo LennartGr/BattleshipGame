@@ -61,6 +61,12 @@ public class CoordinateParser {
         return new Triplet<>(character, number, horizontal);
     }
 
+    /*
+     * Parses coordinates
+     * 
+     * @param str the string to parse to coordinates
+     * @return the parsed coordinates if successful
+     */
     public static Coordinates parseCoordinates(String str) throws BattleshipException {
         Triplet<Character, Integer, Boolean> triplet = CoordinateParser.splitString(str);
         if (triplet.getValue2()) {

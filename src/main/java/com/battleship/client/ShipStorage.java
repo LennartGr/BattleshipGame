@@ -4,6 +4,11 @@ import java.util.Map;
 import java.util.HashMap;
 import java.io.Serializable;
 
+/**
+ * The ShipStorage class represents the storage for ships in a battleship game.
+ * It provides methods for adding ships, retrieving ship information, attacking
+ * cells, and checking game completion status.
+ */
 public class ShipStorage implements Serializable {
 
     private static final String ERR_OVERLAP = "Cannot place ship there, it is overlapping with an existant one";
@@ -18,6 +23,12 @@ public class ShipStorage implements Serializable {
     // maps a ship id to the array of storage entries where the ship is placed on
     Map<Integer, StorageEntry[]> shipToEntriesMap = new HashMap<>();
 
+    /**
+     * Constructs a ShipStorage object with the specified width and height.
+     *
+     * @param width  The width of the storage.
+     * @param height The height of the storage.
+     */
     public ShipStorage(int width, int height) {
         this.height = height;
         this.width = width;
@@ -30,6 +41,15 @@ public class ShipStorage implements Serializable {
         }
     }
 
+    /**
+     * Adds a ship to the storage starting from the specified coordinates.
+     *
+     * @param startCoordinates The starting coordinates of the ship.
+     * @param vertical         Flag indicating whether the ship is placed vertically
+     *                         or horizontally.
+     * @param ship             The ship to be added.
+     * @throws BattleshipException if the ship placement is invalid.
+     */
     public void addShip(Coordinates startCoordinates, boolean vertical, Ship ship) throws BattleshipException {
         int x = startCoordinates.getX();
         int y = startCoordinates.getY();
@@ -73,15 +93,35 @@ public class ShipStorage implements Serializable {
         shipToEntriesMap.put(Integer.valueOf(ship.getId()), usedEntries);
     }
 
+    /**
+     * Retrieves the ship ID at the specified coordinates.
+     *
+     * @param coordinates The coordinates to check.
+     * @return The ship ID at the specified coordinates, or null if no ship is
+     *         present.
+     */
     public Integer getValue(Coordinates coordinates) {
         return shipsArray[coordinates.getX()][coordinates.getY()].shipId;
     }
 
+    /**
+     * Retrieves the hit status at the specified coordinates.
+     *
+     * @param coordinates The coordinates to check.
+     * @return The hit status at the specified coordinates.
+     */
     public HitStatus getHitStatus(Coordinates coordinates) {
         return shipsArray[coordinates.getX()][coordinates.getY()].hitStatus;
     }
 
-    // Assuming board is completely build up
+    /**
+     * Attacks the cell at the specified coordinates and returns the hit status.
+     * Assuming board is completely build up.
+     *
+     * @param coordinates The coordinates to attack.
+     * @return The hit status after the attack.
+     * @throws BattleshipException if the attack is invalid.
+     */
     public HitStatus attack(Coordinates coordinates) throws BattleshipException {
         int x = coordinates.getX();
         int y = coordinates.getY();
@@ -111,7 +151,11 @@ public class ShipStorage implements Serializable {
         }
     }
 
-    // checks if all ships are destroyed
+    /**
+     * Checks if all ships in the storage are completely destroyed.
+     *
+     * @return true if all ships are destroyed, false otherwise.
+     */
     public boolean isCompletelyDestroyed() {
         for (Integer ShipId : shipToEntriesMap.keySet()) {
             if (shipToEntriesMap.get(ShipId)[0].hitStatus != HitStatus.DESTROYED) {
@@ -121,19 +165,27 @@ public class ShipStorage implements Serializable {
         return true;
     }
 
+    /**
+     * Returns a string representation of the ship storage.
+     *
+     * @return The string representation of the ship storage.
+     */
     @Override
     public String toString() {
         return storageEntryArrayVisualizer(this.shipsArray);
     }
 
-    /*
-     * A 2d array that keeps track of the taken attacks and uses StorageEntries 
-     * to do so.
+    /**
+     * The AttackHistory class represents the attack history of the ship storage.
+     * It keeps track of the hit status of each cell in the storage.
      */
     class AttackHistory {
 
         private StorageEntry[][] attackHistory;
 
+        /**
+         * Constructs an AttackHistory object.
+         */
         public AttackHistory() {
             this.attackHistory = new StorageEntry[width][height];
             // init ships array
@@ -144,18 +196,32 @@ public class ShipStorage implements Serializable {
             }
         }
 
+        /**
+         * Sets the hit status at the specified coordinates in the attack history.
+         *
+         * @param coordinates The coordinates to set the hit status.
+         * @param hitStatus   The hit status to set.
+         */
         public void setHitStatus(Coordinates coordinates, HitStatus hitStatus) {
             attackHistory[coordinates.getX()][coordinates.getY()].hitStatus = hitStatus;
         }
 
+        /**
+         * Sets the hit status at the specified coordinates in the attack history.
+         *
+         * @param coordinates The coordinates to set the hit status.
+         * @param hitStatus   The hit status to set.
+         */
         @Override
         public String toString() {
             return storageEntryArrayVisualizer(attackHistory);
         }
     }
 
-    /*
-     * Light data container 
+    /**
+     * The StorageEntry class represents a storage entry in the ship storage.
+     * It contains information about the presence of a ship, its symbol, and the hit
+     * status.
      */
     class StorageEntry implements Serializable {
 

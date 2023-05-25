@@ -31,47 +31,82 @@ public class Client {
     // reused and closed at the very end
     private Scanner scanner = new Scanner(System.in);
 
-    public void connect(String hostName, int port) throws IOException {
+    /**
+     * Establishes a connection with the server.
+     *
+     * @param hostName the hostname of the server
+     * @param port     the port number of the server
+     * @throws IOException if an I/O error occurs while establishing the connection
+     */
+    private void connect(String hostName, int port) throws IOException {
         socket = new Socket(hostName, port);
         JansiHelper.print("Connected to server at " + socket.getRemoteSocketAddress());
 
         out = new ObjectOutputStream(socket.getOutputStream());
-        // TODO program seems to pause in this line if server thread not yet started
         in = new ObjectInputStream(socket.getInputStream());
     }
 
-    public void sendObject(Object obj) throws IOException {
+    /**
+     * Sends an object to the server.
+     *
+     * @param obj the object to send
+     * @throws IOException if an I/O error occurs while sending the object
+     */
+    private void sendObject(Object obj) throws IOException {
         out.writeObject(obj);
         out.flush();
     }
 
-    public Object receiveObject() throws ClientDisconnectException, IOException, ClassNotFoundException {
+    /**
+     * Receives an object from the server.
+     *
+     * @return the received object
+     * @throws ClientDisconnectException if the opponent has disconnected from the game
+     * @throws IOException               if an I/O error occurs while receiving the object
+     * @throws ClassNotFoundException  if error in protocol occurs
+     */
+    private Object receiveObject() throws ClientDisconnectException, IOException, ClassNotFoundException {
         Object obj = in.readObject();
-        // check if the special case occured of opponent disconnecting
         if (obj instanceof ClientDisconnectException) {
             throw (ClientDisconnectException) obj;
         }
         return obj;
     }
 
-    public void close() throws IOException {
+    /**
+     * Closes the client's connection and resources.
+     *
+     * @throws IOException if an I/O error occurs while closing the connection
+     */
+    private void close() throws IOException {
         in.close();
         out.close();
         socket.close();
         scanner.close();
     }
 
+    /**
+     * Runs the client-side game logic.
+     *
+     * @throws ClassNotFoundException if error in protocol occurs
+     */
     public void run() throws ClassNotFoundException {
         try {
-            // first phase: send shipStorage to server
+            // Connect to the server
             connect("localhost", 8080);
+            
+            // Build the ship storage
             ShipStorageBuilder storageBuilder = new ShipStorageBuilder();
             shipStorage = storageBuilder.buildShipStorage(scanner, 10, 10);
+            
+            // Send ship storage to the server
             sendObject(shipStorage);
 
+            // Create attack history
             attackHistory = shipStorage.new AttackHistory();
 
             while (true) {
+                // Receive round start event from the server
                 final RoundStartEvent roundStartEvent = (RoundStartEvent) receiveObject();
                 if (roundStartEvent.gameStatus() == GameStatus.YOU_LOST) {
                     JansiHelper.print("You lost!");
@@ -80,24 +115,27 @@ public class Client {
                     JansiHelper.print("You won!");
                     break;
                 }
-                // arriving here: game not over
-                // check if the we are attacking (or even attacking again)
+
+                // Determine if it's the client's turn to attack
                 final boolean attacking = (roundStartEvent.attackStatus() == AttackStatus.ATTACK
                         || roundStartEvent.attackStatus() == AttackStatus.ATTACK_AGAIN);
-                        JansiHelper.print(roundStartEvent.toString());
+
+                JansiHelper.print(roundStartEvent.toString());
 
                 if (attacking) {
+                    // Perform the attack
                     performAttack();
                 } else {
+                    // Receive feedback from the defender
                     DefenderFeedbackEvent feedbackEvent = (DefenderFeedbackEvent) receiveObject();
                     JansiHelper.print(String.format("Cell %s was attacked. Result: %s.%n",
-                                feedbackEvent.coordinates().toString(),
-                                feedbackEvent.hitStatus().toString()));
-                    // update own ship storage accordingly
+                            feedbackEvent.coordinates().toString(),
+                            feedbackEvent.hitStatus().toString()));
+                    // Update own ship storage accordingly
                     try {
                         shipStorage.attack(feedbackEvent.coordinates());
                     } catch (BattleshipException e) {
-                        // invariant: exception never thrown since server ensured that attack was legal
+                        // This exception should never be thrown since the server ensures that the attack was legal
                     }
                 }
             }
@@ -109,15 +147,23 @@ public class Client {
         }
     }
 
+    /**
+     * Performs an attack by sending the coordinates to the server and receiving feedback.
+     * Synatex check of the inputed coordinates happens on the client side.
+     *
+     * @throws ClientDisconnectException if the opponent has disconnected from the game
+     * @throws IOException               if an I/O error occurs while performing the attack
+     * @throws ClassNotFoundException  if error in protocol occurs
+     */
     private void performAttack() throws ClientDisconnectException, IOException, ClassNotFoundException {
-        // syntax check of input on client side:
         while (true) {
+            // Parse the input coordinates from the scanner
             Coordinates coordinates = parseCoordinatesToScanner();
             sendObject(coordinates);
             AttackerFeedbackEvent feedbackEvent = (AttackerFeedbackEvent) receiveObject();
             if (feedbackEvent.attackSuccess()) {
                 JansiHelper.print("Result of your attack: " + feedbackEvent.hitStatus().toString());
-                // update attack history
+                // Update attack history
                 attackHistory.setHitStatus(coordinates, feedbackEvent.hitStatus());
                 return;
             } else {
@@ -125,11 +171,13 @@ public class Client {
                 JansiHelper.print("You may try to attack again!");
             }
         }
-
     }
 
-    // fetches scanner input until it can be parsed to syntactically correct
-    // coordinates
+    /**
+     * Parses coordinates from the scanner until valid coordinates are entered.
+     *
+     * @return the parsed coordinates
+     */
     private Coordinates parseCoordinatesToScanner() {
         Coordinates coordinates;
         while (true) {
@@ -144,7 +192,11 @@ public class Client {
         return coordinates;
     }
 
-    // if input is a known command, execute it
+    /**
+     * Checks if the input is a special command and executes it if it is.
+     *
+     * @return the input string if it is not a special command, or the special command itself
+     */
     private String catchSpecialInputs() {
         while (true) {
             JansiHelper.print(INPUT_DEMAND_ATTACK);
@@ -159,10 +211,18 @@ public class Client {
         }
     }
 
+    /**
+     * The main method to start the Battleship game client.
+     *
+     * @param args the command-line arguments
+     * @throws IOException              if an I/O error occurs while running the game
+     * @throws ClassNotFoundException if a class cannot be found while running the game (error in protocol)
+     */
     public static void main(String[] args) throws IOException, ClassNotFoundException {
-        // allow for colorful console output
+        // Allow for colorful console output
         AnsiConsole.systemInstall();
 
+        // Create and run the client
         Client client = new Client();
         client.run();
     }
