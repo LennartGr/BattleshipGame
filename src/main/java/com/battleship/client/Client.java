@@ -11,7 +11,6 @@ import com.battleship.events.RoundStartEvent.GameStatus;
 
 // use colorful console output
 import org.fusesource.jansi.AnsiConsole;
-import static org.fusesource.jansi.Ansi.*;
 
 import java.io.*;
 
@@ -27,14 +26,14 @@ public class Client {
     private static final String COMMAND_SHOW_HISTORY = "history";
     private static final String INPUT_DEMAND_ATTACK = String.format(
             "Enter coordinates where you want to attack. Use \'%s\' to see the state of your ships. Use \'%s\' to see your attack history",
-            COMMAND_SHOW_OWN, COMMAND_SHOW_HISTORY);
+            JansiHelper.alert(COMMAND_SHOW_OWN), JansiHelper.alert(COMMAND_SHOW_HISTORY));
 
     // reused and closed at the very end
     private Scanner scanner = new Scanner(System.in);
 
     public void connect(String hostName, int port) throws IOException {
         socket = new Socket(hostName, port);
-        System.out.println("Connected to server at " + socket.getRemoteSocketAddress());
+        JansiHelper.print("Connected to server at " + socket.getRemoteSocketAddress());
 
         out = new ObjectOutputStream(socket.getOutputStream());
         // TODO program seems to pause in this line if server thread not yet started
@@ -72,34 +71,28 @@ public class Client {
 
             attackHistory = shipStorage.new AttackHistory();
 
-            // second phase: wait for start message
-            // StartMessageEvent startMessage = (StartMessageEvent) receiveObject();
-            // System.out.println(startMessage.toString());
-
-            // boolean attacking = startMessage.getStarting();
-
             while (true) {
                 final RoundStartEvent roundStartEvent = (RoundStartEvent) receiveObject();
                 if (roundStartEvent.gameStatus() == GameStatus.YOU_LOST) {
-                    System.out.println("You lost!");
+                    JansiHelper.print("You lost!");
                     break;
                 } else if (roundStartEvent.gameStatus() == GameStatus.YOU_WON) {
-                    System.out.println("You won!");
+                    JansiHelper.print("You won!");
                     break;
                 }
                 // arriving here: game not over
                 // check if the we are attacking (or even attacking again)
                 final boolean attacking = (roundStartEvent.attackStatus() == AttackStatus.ATTACK
                         || roundStartEvent.attackStatus() == AttackStatus.ATTACK_AGAIN);
-                System.out.println(roundStartEvent.toString());
+                        JansiHelper.print(roundStartEvent.toString());
 
                 if (attacking) {
                     performAttack();
                 } else {
                     DefenderFeedbackEvent feedbackEvent = (DefenderFeedbackEvent) receiveObject();
-                    System.out.printf("Cell %s was attacked. Result: %s.%n",
-                            feedbackEvent.coordinates().toString(),
-                            feedbackEvent.hitStatus().toString());
+                    JansiHelper.print(String.format("Cell %s was attacked. Result: %s.%n",
+                                feedbackEvent.coordinates().toString(),
+                                feedbackEvent.hitStatus().toString()));
                     // update own ship storage accordingly
                     try {
                         shipStorage.attack(feedbackEvent.coordinates());
@@ -110,9 +103,9 @@ public class Client {
             }
             close();
         } catch (ClientDisconnectException e) {
-            System.out.println("The other player disconnected, you won.");
+            JansiHelper.print("The other player disconnected, you won.");
         } catch (IOException e) {
-            System.out.println("Communication with server failed, game terminated.");
+            JansiHelper.print("Communication with server failed, game terminated.");
         }
     }
 
@@ -123,13 +116,13 @@ public class Client {
             sendObject(coordinates);
             AttackerFeedbackEvent feedbackEvent = (AttackerFeedbackEvent) receiveObject();
             if (feedbackEvent.attackSuccess()) {
-                System.out.println("Result of your attack: " + feedbackEvent.hitStatus().toString());
+                JansiHelper.print("Result of your attack: " + feedbackEvent.hitStatus().toString());
                 // update attack history
                 attackHistory.setHitStatus(coordinates, feedbackEvent.hitStatus());
                 return;
             } else {
-                System.out.println(feedbackEvent.exception().getMessage());
-                System.out.println("You may try to attack again!");
+                JansiHelper.print(feedbackEvent.exception().getMessage());
+                JansiHelper.print("You may try to attack again!");
             }
         }
 
@@ -140,14 +133,12 @@ public class Client {
     private Coordinates parseCoordinatesToScanner() {
         Coordinates coordinates;
         while (true) {
-            // TODO give player the option to view some information as well (own board or
-            // attack history)
             String input = catchSpecialInputs();
             try {
                 coordinates = CoordinateParser.parseCoordinates(input);
                 break;
             } catch (BattleshipException e) {
-                System.out.println(e.getMessage());
+                JansiHelper.print(e.getMessage());
             }
         }
         return coordinates;
@@ -156,12 +147,12 @@ public class Client {
     // if input is a known command, execute it
     private String catchSpecialInputs() {
         while (true) {
-            System.out.println(INPUT_DEMAND_ATTACK);
+            JansiHelper.print(INPUT_DEMAND_ATTACK);
             String input = scanner.next();
             if (input.equals(COMMAND_SHOW_OWN)) {
-                System.out.println(ansi().render(shipStorage.toString()));
+                JansiHelper.print(shipStorage.toString());
             } else if (input.equals(COMMAND_SHOW_HISTORY)) {
-                System.out.println(ansi().render(attackHistory.toString()));
+                JansiHelper.print(attackHistory.toString());
             } else {
                 return input;
             }

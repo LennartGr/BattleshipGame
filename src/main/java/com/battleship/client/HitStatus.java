@@ -1,8 +1,6 @@
 package com.battleship.client;
 
-import java.io.Serializable;
-
-public enum HitStatus implements Serializable {
+public enum HitStatus {
     
     NOT_ATTTACKED("cell not yet attacked"),
     MISSED("miss"),
@@ -17,6 +15,6 @@ public enum HitStatus implements Serializable {
 
     @Override
     public String toString() {
-        return textRepresentation;
+        return JansiHelper.colorize(textRepresentation, HitStatusColorizer.getColorString(this));
     }
 }

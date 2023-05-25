@@ -185,13 +185,13 @@ public class ShipStorage implements Serializable {
             String newline = String.valueOf(y) + "|";
             for (int x = 0; x < width; x++) {
                 String backgroundColor = HitStatusColorizer.getColorString(storageEntries[x][y].hitStatus);
-                String symbol = String.format("@|%s %s|@", backgroundColor, storageEntries[x][y].symbol);
+                String symbol = JansiHelper.colorizeBackground(storageEntries[x][y].symbol, backgroundColor);
                 newline += symbol + " ";
             }
             text += newline + "\n";
         }
         // add explication in green
-        text += String.format("@|%s %s|@\n", "green", HitStatusColorizer.EXPLICATION);
+        text += HitStatusColorizer.EXPLICATION;
         return text;
     }
 }
